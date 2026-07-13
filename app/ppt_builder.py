@@ -68,9 +68,8 @@ def _blip_of(pic_shape):
 
 def replace_image(slide, pic_shape, new_image_path: str):
     """
-    Substitui a imagem num shape existente.
-    Usa add_picture temporariamente para carregar o novo ImagePart
-    e então redireciona o blip original para o novo rId.
+    Substitui a imagem mantendo a proporção original (fit/contain no placeholder).
+    A imagem é centralizada dentro da área reservada pelo template.
     """
     blip = _blip_of(pic_shape)
     if blip is None:
@@ -78,22 +77,48 @@ def replace_image(slide, pic_shape, new_image_path: str):
 
     old_rid = blip.get(f"{{{NS_R}}}embed")
 
-    # Adiciona imagem temporária para obter o ImagePart/rId
-    tmp = slide.shapes.add_picture(
-        new_image_path,
-        pic_shape.left, pic_shape.top,
-        pic_shape.width, pic_shape.height,
-    )
-    new_blip = _blip_of(tmp)
-    new_rid = new_blip.get(f"{{{NS_R}}}embed")
+    # Dimensões reais da imagem
+    with PILImage.open(new_image_path) as img:
+        img_w, img_h = img.size
 
-    # Redireciona o blip original
+    # Área do placeholder no template (em EMU)
+    ph_left = pic_shape.left
+    ph_top  = pic_shape.top
+    ph_w    = pic_shape.width
+    ph_h    = pic_shape.height
+
+    # Escala proporcional (contain: imagem inteira visível, sem distorção)
+    scale = min(ph_w / img_w, ph_h / img_h)
+    fit_w = int(img_w * scale)
+    fit_h = int(img_h * scale)
+
+    # Centraliza dentro do placeholder
+    left = ph_left + (ph_w - fit_w) // 2
+    top  = ph_top  + (ph_h - fit_h) // 2
+
+    # Adiciona imagem temporária no tamanho correto para obter o ImagePart/rId
+    tmp = slide.shapes.add_picture(new_image_path, left, top, fit_w, fit_h)
+    new_rid = _blip_of(tmp).get(f"{{{NS_R}}}embed")
+
+    # Redireciona o blip original para a nova imagem
     blip.set(f"{{{NS_R}}}embed", new_rid)
 
-    # Remove o shape temporário (mas mantém o ImagePart no pacote)
+    # Atualiza posição e tamanho do shape no XML para refletir o fit
+    xfrm = pic_shape.element.find(f".//{{{NS_A}}}xfrm")
+    if xfrm is not None:
+        off = xfrm.find(f"{{{NS_A}}}off")
+        ext = xfrm.find(f"{{{NS_A}}}ext")
+        if off is not None:
+            off.set("x", str(left))
+            off.set("y", str(top))
+        if ext is not None:
+            ext.set("cx", str(fit_w))
+            ext.set("cy", str(fit_h))
+
+    # Remove o shape temporário (ImagePart permanece no pacote)
     slide.shapes._spTree.remove(tmp.element)
 
-    # Descarta a relação antiga se diferente
+    # Descarta a relação antiga
     if old_rid and old_rid != new_rid:
         try:
             slide.part.drop_rel(old_rid)
@@ -271,10 +296,23 @@ def set_total(slide, n: int):
 
 
 def _main_picture(slide):
-    """Retorna o shape de imagem com maior área no slide."""
+    """
+    Retorna o shape de peça do slide.
+    Busca primeiro pelo nome do template ('Imagem 12' retrato, 'Imagem 5' paisagem),
+    depois pela maior área como fallback.
+    """
     pics = [s for s in slide.shapes if s.shape_type == 13]
     if not pics:
         return None
+    for name in ("Imagem 12", "Imagem 5", "Imagem 2"):
+        match = next((s for s in pics if s.name == name), None)
+        if match:
+            return match
+    # Fallback: maior área excluindo shapes muito pequenos (logos, ícones < 1")
+    from pptx.util import Inches
+    large = [s for s in pics if s.width > Inches(1) and s.height > Inches(1)]
+    if large:
+        return max(large, key=lambda s: s.width * s.height)
     return max(pics, key=lambda s: s.width * s.height)
 
 
