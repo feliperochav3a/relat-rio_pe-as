@@ -1,0 +1,35 @@
+# Ambiente virtual
+pptx-env/
+.venv/
+venv/
+env/
+
+# Cache Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+
+# Segredos
+.env
+.env.*
+
+# Arquivos de dev/teste
+test_*.py
+*.log
+server_*.txt
+srv*.txt
+
+# Graphify (dados de análise, não precisam ir para produção)
+graphify-out/
+
+# Extração do template (fonte de verdade é o .pptx)
+pptx_extracted/
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini

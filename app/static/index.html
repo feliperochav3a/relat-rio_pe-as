@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Relatório de Peças — V3A</title>
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+
+  <div class="container">
+
+    <!-- ── Header ── -->
+    <header>
+      <div class="logo-v3a">V3A</div>
+      <div class="header-title">
+        <h1>Relatório de Peças</h1>
+        <p>Gerador automático de apresentação PPTX</p>
+      </div>
+    </header>
+
+    <main>
+      <form id="reportForm" novalidate>
+
+        <!-- ── Subtítulo da capa ── -->
+        <section class="card">
+          <label class="field-label" for="subtitle">Subtítulo da capa</label>
+          <span class="hint">Formato: CLIENTE | CAMPANHA — o sistema detecta automaticamente se faltar o "|"</span>
+          <input
+            type="text"
+            id="subtitle"
+            name="subtitle"
+            placeholder="Ex: CCBB SALVADOR | EFEITOS ESPECIAIS"
+            autocomplete="off"
+            spellcheck="false"
+            required
+          />
+        </section>
+
+        <!-- ── Peças ── -->
+        <section class="card">
+          <div class="section-header">
+            <span class="field-label">Peças</span>
+            <span class="count-badge hidden" id="piecesCount">0</span>
+          </div>
+          <span class="hint" style="margin-bottom:14px;display:block;">
+            O nome do arquivo vira o título do slide. Arraste para reordenar.
+          </span>
+
+          <!-- Zona de drop -->
+          <div class="drop-zone" id="dropZone">
+            <div class="drop-icon-wrap">
+              <span class="drop-icon">📁</span>
+            </div>
+            <p class="drop-main">Arraste as imagens aqui</p>
+            <p class="hint">
+              ou <label for="fileInput" class="link">clique para selecionar</label>
+              &nbsp;·&nbsp; PNG, JPG ou JPEG
+            </p>
+            <input type="file" id="fileInput" accept="image/png,image/jpeg" multiple hidden />
+          </div>
+
+          <!-- Lista de peças -->
+          <ul class="pieces-list" id="piecesList"></ul>
+        </section>
+
+        <!-- ── Botão Gerar ── -->
+        <button type="submit" class="btn-generate" id="btnGenerate" disabled>
+          <span class="btn-icon">🚀</span>
+          <div class="btn-spinner"></div>
+          <span class="btn-text">Gerar Relatório</span>
+        </button>
+
+      </form>
+
+      <!-- ── Status dos agentes (timeline) ── -->
+      <div class="agent-status hidden" id="agentStatus">
+        <p class="agent-status-title">Processando</p>
+        <div class="timeline">
+
+          <div class="tl-step" id="stepOrchestrator">
+            <div class="tl-left">
+              <div class="tl-dot"><span class="tl-icon"></span></div>
+              <div class="tl-line"></div>
+            </div>
+            <div class="tl-content">
+              <span class="tl-label">Orquestrador</span>
+              <span class="tl-msg">Aguardando...</span>
+            </div>
+          </div>
+
+          <div class="tl-step" id="stepBuilder">
+            <div class="tl-left">
+              <div class="tl-dot"><span class="tl-icon"></span></div>
+              <div class="tl-line"></div>
+            </div>
+            <div class="tl-content">
+              <span class="tl-label">Builder</span>
+              <span class="tl-msg">Aguardando...</span>
+            </div>
+          </div>
+
+          <div class="tl-step" id="stepArtDirector">
+            <div class="tl-left">
+              <div class="tl-dot"><span class="tl-icon"></span></div>
+              <div class="tl-line"></div>
+            </div>
+            <div class="tl-content">
+              <span class="tl-label">Diretor de Arte</span>
+              <span class="tl-msg">Aguardando...</span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <!-- ── Resultado ── -->
+      <div class="result hidden" id="resultArea">
+        <span class="result-icon" id="resultIcon">✅</span>
+        <p class="result-title" id="resultTitle">PPTX Gerado!</p>
+        <p id="artDirectorMessage"></p>
+        <ul class="issues-list hidden" id="issuesList"></ul>
+        <div class="result-actions">
+          <a class="btn-download hidden" id="btnDownload" href="#" download>
+            ⬇&nbsp; Baixar PPTX
+          </a>
+          <button class="btn-reset hidden" id="btnReset" type="button">
+            Gerar novo relatório
+          </button>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script src="/static/main.js"></script>
+</body>
+</html>
