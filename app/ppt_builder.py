@@ -228,32 +228,34 @@ def set_cover_subtitle(slide, subtitle: str):
 def set_piece_title(slide, title: str):
     """
     Define o título da peça ('CaixaDeTexto 11').
-    Usa um único parágrafo — o word-wrap do template cuida da quebra de linha.
-    Para slides landscape, expande a caixa para as dimensões do slide retrato
-    (4.1378" × 0.9746") pois o template landscape foi projetado para "BIKE" (curto).
+
+    Retrato : caixa 4.1378" × 0.9746", noAutofit, wrap=square
+              → 40 pt, até 2 linhas, sem sobreposição (imagem fica à direita).
+    Landscape: expande largura para 4.1378" mas mantém altura original (~0.5933")
+               para não sobrepor a Imagem 5 (top=1.7093"). Usa wrap=none +
+               normAutofit: título em 1 linha, fonte reduz para caber na largura.
     """
     from lxml import etree
     shape = _find_shape(slide.shapes, "CaixaDeTexto 11")
     if not shape or not shape.has_text_frame:
         return
 
-    # Dimensões do slide retrato: w=3783595 EMU (4.1378"), h=891169 EMU (0.9746")
-    # O slide landscape (BIKE) tem w=1655322 (1.8103") — estreito demais para títulos longos.
-    _PORTRAIT_W = 3783595
-    _PORTRAIT_H = 891169
-    if shape.width < _PORTRAIT_W:
+    # Slide landscape tem caixa de 1.8103" (projetada para "BIKE") → expande largura.
+    # Slide retrato já tem 4.1378" → não altera nada.
+    _PORTRAIT_W = 3783595  # 4.1378" em EMU
+
+    is_landscape = shape.width < _PORTRAIT_W
+    if is_landscape:
         shape.width = _PORTRAIT_W
-        shape.height = _PORTRAIT_H
+        # Não muda height: ~0.5933" original fica acima da imagem (gap de ~0.22")
 
     txBody = shape.text_frame._txBody
     existing = txBody.findall(f"{{{NS_A}}}p")
     tmpl = copy.deepcopy(existing[0]) if existing else None
 
-    # Remove todos os parágrafos antigos
     for p in existing:
         txBody.remove(p)
 
-    # Cria exatamente 1 parágrafo com o título completo
     new_p = copy.deepcopy(tmpl) if tmpl is not None else etree.Element(f"{{{NS_A}}}p")
 
     for r in new_p.findall(f"{{{NS_A}}}r"):
@@ -272,6 +274,15 @@ def set_piece_title(slide, title: str):
     t_el.text = title.upper()
     new_p.append(new_r)
     txBody.append(new_p)
+
+    if is_landscape:
+        # 1 linha sem quebra de palavra; fonte reduz automaticamente para caber
+        bodyPr = txBody.find(f"{{{NS_A}}}bodyPr")
+        if bodyPr is not None:
+            bodyPr.set("wrap", "none")
+            for child in list(bodyPr):
+                bodyPr.remove(child)
+            bodyPr.append(etree.Element(f"{{{NS_A}}}normAutofit"))
 
 
 def set_total(slide, n: int):
