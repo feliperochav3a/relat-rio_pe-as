@@ -228,13 +228,22 @@ def set_cover_subtitle(slide, subtitle: str):
 def set_piece_title(slide, title: str):
     """
     Define o título da peça ('CaixaDeTexto 11').
-    Usa um único parágrafo — o word-wrap e o auto-shrink do template
-    cuidam da quebra de linha e do tamanho da fonte automaticamente.
+    Usa um único parágrafo — o word-wrap do template cuida da quebra de linha.
+    Para slides landscape, expande a caixa para as dimensões do slide retrato
+    (4.1378" × 0.9746") pois o template landscape foi projetado para "BIKE" (curto).
     """
     from lxml import etree
     shape = _find_shape(slide.shapes, "CaixaDeTexto 11")
     if not shape or not shape.has_text_frame:
         return
+
+    # Dimensões do slide retrato: w=3783595 EMU (4.1378"), h=891169 EMU (0.9746")
+    # O slide landscape (BIKE) tem w=1655322 (1.8103") — estreito demais para títulos longos.
+    _PORTRAIT_W = 3783595
+    _PORTRAIT_H = 891169
+    if shape.width < _PORTRAIT_W:
+        shape.width = _PORTRAIT_W
+        shape.height = _PORTRAIT_H
 
     txBody = shape.text_frame._txBody
     existing = txBody.findall(f"{{{NS_A}}}p")
