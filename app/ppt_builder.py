@@ -103,6 +103,12 @@ def replace_image(slide, pic_shape, new_image_path: str):
     # Redireciona o blip original para a nova imagem
     blip.set(f"{{{NS_R}}}embed", new_rid)
 
+    # Remove crop do template (srcRect herdado da imagem original pode cortar a nova)
+    srcRect = pic_shape.element.find(f".//{{{NS_A}}}srcRect")
+    if srcRect is not None:
+        for attr in list(srcRect.attrib.keys()):
+            del srcRect.attrib[attr]
+
     # Atualiza posição e tamanho do shape no XML para refletir o fit
     xfrm = pic_shape.element.find(f".//{{{NS_A}}}xfrm")
     if xfrm is not None:
@@ -222,60 +228,41 @@ def set_cover_subtitle(slide, subtitle: str):
 def set_piece_title(slide, title: str):
     """
     Define o título da peça ('CaixaDeTexto 11').
-    Divide em até 2 linhas automaticamente.
+    Usa um único parágrafo — o word-wrap e o auto-shrink do template
+    cuidam da quebra de linha e do tamanho da fonte automaticamente.
     """
+    from lxml import etree
     shape = _find_shape(slide.shapes, "CaixaDeTexto 11")
     if not shape or not shape.has_text_frame:
         return
 
-    words = title.upper().split()
-    if len(words) <= 1:
-        lines = words or [""]
-    elif len(words) == 2:
-        lines = words
-    else:
-        mid = (len(words) + 1) // 2
-        lines = [" ".join(words[:mid]), " ".join(words[mid:])]
-
     txBody = shape.text_frame._txBody
     existing = txBody.findall(f"{{{NS_A}}}p")
-
-    # Template de parágrafo para copiar a formatação
     tmpl = copy.deepcopy(existing[0]) if existing else None
 
-    # Remove parágrafos antigos
+    # Remove todos os parágrafos antigos
     for p in existing:
         txBody.remove(p)
 
-    for line in lines:
-        if tmpl is not None:
-            new_p = copy.deepcopy(tmpl)
-        else:
-            from lxml import etree
-            new_p = etree.Element(f"{{{NS_A}}}p")
+    # Cria exatamente 1 parágrafo com o título completo
+    new_p = copy.deepcopy(tmpl) if tmpl is not None else etree.Element(f"{{{NS_A}}}p")
 
-        # Limpa runs do parágrafo copiado
-        for r in new_p.findall(f"{{{NS_A}}}r"):
-            new_p.remove(r)
+    for r in new_p.findall(f"{{{NS_A}}}r"):
+        new_p.remove(r)
 
-        # Cria run com o texto da linha copiando a formatação do template
-        if tmpl is not None:
-            tmpl_runs = tmpl.findall(f"{{{NS_A}}}r")
-            if tmpl_runs:
-                new_r = copy.deepcopy(tmpl_runs[0])
-                t_el = new_r.find(f"{{{NS_A}}}t")
-                if t_el is None:
-                    from lxml import etree
-                    t_el = etree.SubElement(new_r, f"{{{NS_A}}}t")
-                t_el.text = line
-                new_p.append(new_r)
-        else:
-            from lxml import etree
-            new_r = etree.SubElement(new_p, f"{{{NS_A}}}r")
+    tmpl_runs = tmpl.findall(f"{{{NS_A}}}r") if tmpl is not None else []
+    if tmpl_runs:
+        new_r = copy.deepcopy(tmpl_runs[0])
+        t_el = new_r.find(f"{{{NS_A}}}t")
+        if t_el is None:
             t_el = etree.SubElement(new_r, f"{{{NS_A}}}t")
-            t_el.text = line
+    else:
+        new_r = etree.SubElement(new_p, f"{{{NS_A}}}r")
+        t_el = etree.SubElement(new_r, f"{{{NS_A}}}t")
 
-        txBody.append(new_p)
+    t_el.text = title.upper()
+    new_p.append(new_r)
+    txBody.append(new_p)
 
 
 def set_total(slide, n: int):
